@@ -1,0 +1,40 @@
+Instrucciones
+
+1. Crear archivo .json (JavaScript Object Notation), por ejemplo commands.json
+1.1. El archivo debera estar en la misma carpeta de la que se
+    ejecuta el programa
+1.2. El archivo debera cumplir con el formato json, se puede 
+    usar el archivo commands_template.json como ejemplo
+1.3. Por defecto el programa ejecuta los comandos al iniciar
+    y luego cada 5 minutos, si se desea modificar esto se 
+    debe agregar al archivo commands.json la seccion 
+    repeat_after, tal como se ve en commands_template.json.
+    Si no se desea modificar, se puede borrar esa seccion 
+    (tener en cuenta que en caso de ser borrado en mitad de 
+    la ejecución, se mantendra el ultimo tiempo utilizado).
+1.4. Agregar los comandos por consola que se deseen ejecutar en
+    la seccion commands tal como se ve en el archivo 
+    commands_template, entre commillas y separados por coma.
+    En caso que se requiera poner una direccion a un(a) 
+    carpeta/archivo, la contrabarra (\) ira doble (\\) o ira como 
+    una barra (/). En cualquier otro caso que se deba poner una 
+    contrabarra (\) debera ir doble (\\) para cumplir con el 
+    formato json.
+
+2. Ejecutar el programa
+2.1. Dar doble click en el programa. El programa corre en segundo plano,
+    así que la manera de saber si anda es si hace los comandos.
+2.2. Inmediatamente intentará correr los comandos en el archivo en todos
+    los archivos .json que encuentre en la misma carpeta donde se 
+    encuentre este ejecutable.
+2.3. No es necesario reiniciar el programa si se quiere modificar/eliminar/et
+    al, el programa lo detecta automaticamente
+    2.3.1. En caso de que el archivo sea modificado se empezara a contar desde
+        0, es decir, se ejecutaran todos los comandos de vuelta, y se reseteará
+        el timer a esperar el tiempo indicado en el archivo.
+    2.3.2. En caso de que se elimine el archivo, no volverán a ejecutar los
+        comandos. 
+2.4. Es recomendable para probar que el programa funcione correctamente
+    agregar el comando explorer al archivo commands.json para abrir un 
+    explorador de windows y asi comprobar que el programa anda. Se puede
+    borrar luego de comprobarlo.
