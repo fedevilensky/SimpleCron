@@ -21,12 +21,12 @@ An example json file could be:
 Or
 ```
 {
-	"command_type":"cron",
-	"cron_expression":"0 */3 * ? * *",
-	"commands":[
-		"code",
+  "command_type":"cron",
+  "cron_expression":"0 */3 * ? * *",
+  "commands":[
+    "code",
     "notepad"
-	]
+  ]
 }
 ```
 
