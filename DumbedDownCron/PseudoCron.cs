@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IO;
-using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Cronos;
 
 namespace DumbedDownCron
 {
@@ -41,33 +41,8 @@ namespace DumbedDownCron
                     //ignore
                 }
 
-                
+
             }
-        }
-
-        private void RunTasks(Commands cmd)
-        {
-            Task.Run(() =>
-                {
-                    while (true)
-                    {
-                        var tasks = MakeTasks(cmd);
-                        try
-                        {
-                            Task.WaitAll(tasks, cmd.CancellationSource.Token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            return;
-                        }
-                        catch (Exception)
-                        {
-                            // ignored
-                        }
-                    }
-                }
-                , cmd.CancellationSource.Token);
-
         }
 
         private void InitFsWatcher()
@@ -136,13 +111,99 @@ namespace DumbedDownCron
                 cmd.CancellationSource = new CancellationTokenSource();
 
                 _commands[fileName] = cmd;
-
-                RunTasks(cmd);
+                switch (cmd.command_type)
+                {
+                    case Type.Timer:
+                        RunPeriodicalTasks(cmd);
+                        break;
+                    case Type.Cron:
+                        RunCron(cmd);
+                        break;
+                }
             }
             catch (Exception)
             {
                 //ignore
             }
+        }
+
+        private void RunPeriodicalTasks(Commands cmd)
+        {
+            Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        var tasks = MakePeriodicalTasks(cmd);
+                        try
+                        {
+                            Task.WaitAll(tasks, cmd.CancellationSource.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+                        catch (Exception)
+                        {
+                            // ignored
+                        }
+                    }
+                }
+                , cmd.CancellationSource.Token);
+
+        }
+        private void RunCron(Commands cmd)
+        {
+            Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        DateTime? next;
+                        try
+                        {
+                            next = cmd.CronExpression.GetNextOccurrence(DateTime.UtcNow);
+                        }
+                        catch (CronFormatException)
+                        {
+                            return;
+                        }
+                        catch (Exception)
+                        {
+                            return;
+                        }
+
+                        if (!next.HasValue) return;
+
+                        Thread.Sleep(next.Value.Subtract(DateTime.UtcNow));
+                        var tasks = MakeCronTasks(cmd);
+                        try
+                        {
+                            Task.WaitAll(tasks, cmd.CancellationSource.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+                        catch (Exception)
+                        {
+                            // ignored
+                        }
+                    }
+                }
+                , cmd.CancellationSource.Token);
+        }
+
+        private Task[] MakeCronTasks(Commands cmd)
+        {
+            var tasks = new Task[cmd.commands.Count+1];
+            tasks[0] = Task.Delay(1 * SecondToMilliseconds);
+            var i = 1;
+            foreach (var command in cmd.commands)
+            {
+                tasks[i] = new Task(() => Runner.RunCommand(command));
+                tasks[i++].Start();
+            }
+
+            return tasks;
         }
 
         private void CommandFileChanged(object source, FileSystemEventArgs e)
@@ -153,7 +214,7 @@ namespace DumbedDownCron
             AddCommands(e.FullPath);
         }
 
-        private Task[] MakeTasks(Commands json)
+        private Task[] MakePeriodicalTasks(Commands json)
         {
             var tasks = new Task[json.commands.Count + 1];
             var waitingTime = CalculateWaitingTime(json.repeat_after);

@@ -2,7 +2,7 @@ Instrucciones
 
 1. Crear archivo .json (JavaScript Object Notation), por ejemplo commands.json
 1.1. El archivo debera estar en la misma carpeta de la que se
-    ejecuta el programa
+    ejecuta el programa o en cualquier carpeta dentro de esta
 1.2. El archivo debera cumplir con el formato json, se puede 
     usar el archivo commands_template.json como ejemplo
 1.3. Por defecto el programa ejecuta los comandos al iniciar
@@ -35,6 +35,6 @@ Instrucciones
     2.3.2. En caso de que se elimine el archivo, no volverán a ejecutar los
         comandos. 
 2.4. Es recomendable para probar que el programa funcione correctamente
-    agregar el comando explorer al archivo commands.json para abrir un 
+    agregar el comando "explorer" al archivo commands.json para abrir un 
     explorador de windows y asi comprobar que el programa anda. Se puede
     borrar luego de comprobarlo.
