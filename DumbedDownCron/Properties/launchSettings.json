@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DumbedDownCron": {
+      "commandName": "Project",
+      "commandLineArgs": "debug"
+    }
+  }
+}

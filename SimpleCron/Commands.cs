@@ -6,7 +6,7 @@ using Cronos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace DumbedDownCron
+namespace SimpleCron
 {
     public enum Type { Cron, Timer }
     public class Commands
@@ -18,7 +18,7 @@ namespace DumbedDownCron
         public RepeatAfter repeat_after { get; set; } = new RepeatAfter();
         public List<string> commands { get; set; } = new List<string>();
         public CancellationTokenSource CancellationSource { get; set; }
-
+        public DateTime LastWriteTime { get; set; }
         public string cron_expression { get; set; }
 
         public CronExpression CronExpression
@@ -42,6 +42,8 @@ namespace DumbedDownCron
                 {
                     var json = reader.ReadToEnd();
                     var commands = JsonConvert.DeserializeObject<Commands>(json);
+                    commands.LastWriteTime = File.GetLastWriteTime(path);
+
                     return commands;
                 }
             }

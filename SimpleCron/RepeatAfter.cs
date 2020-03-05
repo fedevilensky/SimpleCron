@@ -1,4 +1,4 @@
-﻿namespace DumbedDownCron
+﻿namespace SimpleCron
 {
     public class RepeatAfter
     {

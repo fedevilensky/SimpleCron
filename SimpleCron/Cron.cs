@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Cronos;
+using NLog;
 
-namespace DumbedDownCron
+namespace SimpleCron
 {
-    class PseudoCron
+    public class Cron
     {
-        private int defaultWaitingTime = 5 * MinuteToMilliseconds;
+        private readonly int defaultWaitingTime = 5 * MinuteToMilliseconds;
         private const int DayToMilliseconds = 86400000;
         private const int HourToMilliseconds = 3600000;
         private const int MinuteToMilliseconds = 60000;
@@ -19,17 +20,27 @@ namespace DumbedDownCron
         private FileSystemWatcher _watcher;
         private const string FileRegex = @"^(?!commands_template.json).*\.json$";
         private static readonly Regex Regex = new Regex(FileRegex);
+        private static Cron _instance;
+        private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        public PseudoCron()
+        public static void Start()
         {
+            if (_instance == null)
+                _instance = new Cron();
+        }
+
+        private Cron()
+        {
+            Log.Info("Initializing");
             DoFirstFileSearch();
             InitFsWatcher();
+            Log.Info("Finished initializing");
         }
 
         private void DoFirstFileSearch()
         {
 
-            foreach (var path in Directory.EnumerateFiles(@".\", "*.json", SearchOption.AllDirectories))
+            foreach (var path in Directory.EnumerateFiles(@"./", "*.json", SearchOption.AllDirectories))
             {
 
                 try
@@ -47,7 +58,7 @@ namespace DumbedDownCron
 
         private void InitFsWatcher()
         {
-            _watcher = new FileSystemWatcher(@".\")
+            _watcher = new FileSystemWatcher(@"./")
             {
                 IncludeSubdirectories = true,
                 Filter = "*.json",
@@ -66,6 +77,7 @@ namespace DumbedDownCron
 
         private void CommandFileRenamed(object source, RenamedEventArgs e)
         {
+            Log.Debug($"CommandFileRenamed: {e.FullPath}");
             var oldName = Path.GetFileName(e.OldFullPath);
             var newName = Path.GetFileName(e.FullPath);
             if (Regex.IsMatch(newName))
@@ -81,8 +93,37 @@ namespace DumbedDownCron
 
         private void CommandFileDeleted(object source, FileSystemEventArgs e)
         {
+            Log.Debug($"CommandFileDeleted: {e.FullPath}");
+
             var fileName = Path.GetFileName(e.FullPath);
             RemoveCommands(fileName);
+        }
+
+        private void CommandFileCreated(object source, FileSystemEventArgs e)
+        {
+            Log.Debug($"CommandFileCreated: {e.FullPath}");
+
+            var fullPath = e.FullPath;
+            AddCommands(fullPath);
+        }
+
+        private void CommandFileChanged(object source, FileSystemEventArgs e)
+        {
+
+            var fileName = Path.GetFileName(e.FullPath);
+            if (!Regex.IsMatch(fileName)) return;
+            if (_commands.ContainsKey(fileName))
+            {
+                //May receive notification twice, so if it was not modified, it shouldn't do anything
+                if (_commands[fileName].LastWriteTime == File.GetLastWriteTime(e.FullPath)) return;
+                RemoveCommands(fileName);
+            }
+
+            if (AddCommands(e.FullPath))
+            {
+                Log.Debug($"CommandFileChanged: {e.FullPath}");
+            }
+
         }
 
         private void RemoveCommands(string fileName)
@@ -92,22 +133,19 @@ namespace DumbedDownCron
             _commands.Remove(fileName);
         }
 
-        private void CommandFileCreated(object source, FileSystemEventArgs e)
-        {
-            var fullPath = e.FullPath;
-            AddCommands(fullPath);
-        }
-
-        private void AddCommands(string fullPath)
+        private bool AddCommands(string fullPath)
         {
             try
             {
                 var fileName = Path.GetFileName(fullPath);
-                if (!Regex.IsMatch(fileName))
-                    return;
+                if (!Regex.IsMatch(fileName)) return false;
+                //Should not add a command that already exists
+                if (_commands.ContainsKey(fileName)) return false;
+
                 var cmd = Commands.LoadFromJson(fullPath);
-                if (cmd.commands.Count == 0)
-                    return;
+
+                if (cmd.commands.Count == 0) return true;
+
                 cmd.CancellationSource = new CancellationTokenSource();
 
                 _commands[fileName] = cmd;
@@ -120,10 +158,12 @@ namespace DumbedDownCron
                         RunCron(cmd);
                         break;
                 }
+
+                return true;
             }
             catch (Exception)
             {
-                //ignore
+                return false; //ignore
             }
         }
 
@@ -142,9 +182,9 @@ namespace DumbedDownCron
                         {
                             return;
                         }
-                        catch (Exception)
+                        catch (Exception e)
                         {
-                            // ignored
+                            Log.Fatal(e);
                         }
                     }
                 }
@@ -166,8 +206,9 @@ namespace DumbedDownCron
                         {
                             return;
                         }
-                        catch (Exception)
+                        catch (Exception e)
                         {
+                            Log.Fatal(e);
                             return;
                         }
 
@@ -183,9 +224,9 @@ namespace DumbedDownCron
                         {
                             return;
                         }
-                        catch (Exception)
+                        catch (Exception e)
                         {
-                            // ignored
+                            Log.Fatal(e);
                         }
                     }
                 }
@@ -194,7 +235,7 @@ namespace DumbedDownCron
 
         private Task[] MakeCronTasks(Commands cmd)
         {
-            var tasks = new Task[cmd.commands.Count+1];
+            var tasks = new Task[cmd.commands.Count + 1];
             tasks[0] = Task.Delay(1 * SecondToMilliseconds);
             var i = 1;
             foreach (var command in cmd.commands)
@@ -206,13 +247,6 @@ namespace DumbedDownCron
             return tasks;
         }
 
-        private void CommandFileChanged(object source, FileSystemEventArgs e)
-        {
-            var fileName = Path.GetFileName(e.FullPath);
-            if (!Regex.IsMatch(fileName)) return;
-            RemoveCommands(fileName);
-            AddCommands(e.FullPath);
-        }
 
         private Task[] MakePeriodicalTasks(Commands json)
         {
