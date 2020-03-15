@@ -1,5 +1,6 @@
 # DumbedDownCron
-A dumbed down cron done in c#, no need to install
+A dumbed down cron done in c#, no need to install<br>
+Works on Windows (x64 and x86) and Unix-like systems (x64).
 
 Just run it. It will use any json (except for commands_template.json) placed inside the folder the exe is placed in, or any of it's subfolders. You can rename, delete, add or modify files on the fly and the program will know what to do, no need to restart it.
 
@@ -36,4 +37,4 @@ By default, the task will be treated as if it's "command_type" was a timer. And 
 If you wish to use a cron expression, just use `"command_type": "cron"` and `"cron_expression":$your_expression` as seen in the example above. Should there be any problem with the expression, the json will be ignored.
 
 ### Up next 
-I will try and extend it to work on a unix like environments (GNU/linux, macOS, et al.)
+Add yml support
