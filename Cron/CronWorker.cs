@@ -7,29 +7,29 @@ using System.Threading.Tasks;
 using Cronos;
 using NLog;
 
-namespace SimpleCron
+namespace Cron
 {
-    public class Cron
+    public class CronWorker
     {
-        private readonly int defaultWaitingTime = 5 * MinuteToMilliseconds;
+        private const int DefaultWaitingTime = 5 * MinuteToMilliseconds;
         private const int DayToMilliseconds = 86400000;
         private const int HourToMilliseconds = 3600000;
         private const int MinuteToMilliseconds = 60000;
         private const int SecondToMilliseconds = 1000;
         private readonly Dictionary<string, Commands> _commands = new Dictionary<string, Commands>();
         private FileSystemWatcher _watcher;
-        private const string FileRegex = @"^(?!commands_template.json).*\.json$";
-        private static readonly Regex Regex = new Regex(FileRegex);
-        private static Cron _instance;
+        private static readonly Regex JsonRegex = new Regex(@"^(?!commands_template.json).*\.json$");
+        private static readonly Regex YamlRegex = new Regex(@"^(?!(commands_template.yml|commands_template.yaml)).*\.(yml|yaml)$");
+        private static CronWorker _instance;
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         public static void Start()
         {
             if (_instance == null)
-                _instance = new Cron();
+                _instance = new CronWorker();
         }
 
-        private Cron()
+        private CronWorker()
         {
             Log.Info("Initializing");
             DoFirstFileSearch();
@@ -39,10 +39,14 @@ namespace SimpleCron
 
         private void DoFirstFileSearch()
         {
+            DoFirstJsonSearch();
+            DoFirstYamlSearch();
+        }
 
+        private void DoFirstJsonSearch()
+        {
             foreach (var path in Directory.EnumerateFiles(@"./", "*.json", SearchOption.AllDirectories))
             {
-
                 try
                 {
                     AddCommands(path);
@@ -51,8 +55,32 @@ namespace SimpleCron
                 {
                     //ignore
                 }
+            }
+        }
 
-
+        private void DoFirstYamlSearch()
+        {
+            foreach (var path in Directory.EnumerateFiles(@"./", "*.yaml", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    AddCommands(path);
+                }
+                catch (Exception)
+                {
+                    //ignore
+                }
+            }
+            foreach (var path in Directory.EnumerateFiles(@"./", "*.yml", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    AddCommands(path);
+                }
+                catch (Exception)
+                {
+                    //ignore
+                }
             }
         }
 
@@ -80,7 +108,7 @@ namespace SimpleCron
             Log.Debug($"CommandFileRenamed: {e.FullPath}");
             var oldName = Path.GetFileName(e.OldFullPath);
             var newName = Path.GetFileName(e.FullPath);
-            if (Regex.IsMatch(newName))
+            if (JsonRegex.IsMatch(newName))
             {
                 _commands[newName] = _commands[oldName];
             }
@@ -111,7 +139,7 @@ namespace SimpleCron
         {
 
             var fileName = Path.GetFileName(e.FullPath);
-            if (!Regex.IsMatch(fileName)) return;
+            if (!JsonRegex.IsMatch(fileName)) return;
             if (_commands.ContainsKey(fileName))
             {
                 //May receive notification twice, so if it was not modified, it shouldn't do anything
@@ -138,33 +166,59 @@ namespace SimpleCron
             try
             {
                 var fileName = Path.GetFileName(fullPath);
-                if (!Regex.IsMatch(fileName)) return false;
-                //Should not add a command that already exists
-                if (_commands.ContainsKey(fileName)) return false;
-
-                var cmd = Commands.LoadFromJson(fullPath);
-
-                if (cmd.commands.Count == 0) return true;
-
-                cmd.CancellationSource = new CancellationTokenSource();
-
-                _commands[fileName] = cmd;
-                switch (cmd.command_type)
+                if (JsonRegex.IsMatch(fileName))
                 {
-                    case Type.Timer:
-                        RunPeriodicalTasks(cmd);
-                        break;
-                    case Type.Cron:
-                        RunCron(cmd);
-                        break;
+                    //Should not add a command that already exists
+                    return AddJsonCommands(fullPath, fileName);
+                }
+                if (YamlRegex.IsMatch(fileName))
+                {
+                    return AddYamlCommands(fullPath, fileName);
                 }
 
-                return true;
+                return false;
             }
             catch (Exception)
             {
                 return false; //ignore
             }
+        }
+
+        private bool AddJsonCommands(string fullPath, string fileName)
+        {
+            if (_commands.ContainsKey(fileName)) return false;
+
+            var cmd = Commands.LoadFromJson(fullPath);
+
+            return AddCommandToDictAndRun(fileName, cmd);
+        }
+        private bool AddYamlCommands(string fullPath, string fileName)
+        {
+            if (_commands.ContainsKey(fileName)) return false;
+
+            var cmd = Commands.LoadFromYaml(fullPath);
+
+            return AddCommandToDictAndRun(fileName, cmd);
+        }
+
+        private bool AddCommandToDictAndRun(string fileName, Commands cmd)
+        {
+            if (cmd.commands.Count == 0) return true;
+
+            cmd.CancellationSource = new CancellationTokenSource();
+
+            _commands[fileName] = cmd;
+            switch (cmd.command_type)
+            {
+                case Type.Timer:
+                    RunPeriodicalTasks(cmd);
+                    break;
+                case Type.Cron:
+                    RunCron(cmd);
+                    break;
+            }
+
+            return true;
         }
 
         private void RunPeriodicalTasks(Commands cmd)
@@ -273,7 +327,7 @@ namespace SimpleCron
                           + repeatAfter.minutes * MinuteToMilliseconds
                           + repeatAfter.seconds * SecondToMilliseconds;
             }
-            return (ret > 0) ? ret : defaultWaitingTime;
+            return (ret > 0) ? ret : DefaultWaitingTime;
         }
     }
 }

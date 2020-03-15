@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading;
+using Cron;
 using NLog;
-using SimpleCron;
 
-namespace DumbedDownCron
+namespace SimpleCron
 {
     static class Program
     {
@@ -33,7 +33,7 @@ namespace DumbedDownCron
             LogManager.Configuration = config;
 
             //
-            Cron.Start();
+            CronWorker.Start();
             Thread.Sleep(Timeout.Infinite);
         }
     }

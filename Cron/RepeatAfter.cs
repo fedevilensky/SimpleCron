@@ -1,4 +1,4 @@
-﻿namespace SimpleCron
+﻿namespace Cron
 {
     public class RepeatAfter
     {

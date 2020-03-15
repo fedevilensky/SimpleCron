@@ -5,8 +5,9 @@ using System.Threading;
 using Cronos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SharpYaml.Serialization;
 
-namespace SimpleCron
+namespace Cron
 {
     public enum Type { Cron, Timer }
     public class Commands
@@ -34,7 +35,25 @@ namespace SimpleCron
             }
         }
 
-        public static Commands LoadFromJson(string path = @".\commands.json")
+        public static Commands LoadFromYaml(string path)
+        {
+            try
+            {
+                using (var reader = new StreamReader(new FileStream(path, FileMode.Open)))
+                {
+                    var commands = new Serializer().Deserialize<Commands>(reader);
+                    commands.LastWriteTime = File.GetLastWriteTime(path);
+
+                    return commands;
+                }
+            }
+            catch (Exception)
+            {
+                return new Commands { repeat_after = new RepeatAfter { minutes = 5 }, commands = new List<string>() };
+            }
+        }
+
+        public static Commands LoadFromJson(string path = @"./commands.json")
         {
             try
             {

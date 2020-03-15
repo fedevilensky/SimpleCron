@@ -1,0 +1,10 @@
+---
+repeat_after:
+  days: 1
+  hours: 0
+  minutes: 5
+  seconds: 300
+commands:
+- explorer
+- notepad C:/Users/fedev/Desktop/hola.txt
+- D:\Usuario\Quique sin respaldo\Pseudo-Cron\PseudoCron\PseudoCron\bin\Debug\hola.bat

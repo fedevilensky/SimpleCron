@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NLog;
 
-namespace SimpleCron
+namespace Cron
 {
     public static class Runner
     {
