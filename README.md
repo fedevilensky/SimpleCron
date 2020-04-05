@@ -1,4 +1,4 @@
-# DumbedDownCron
+# SimpleCron
 A dumbed down cron done in c#, no need to install<br>
 Works on Windows (x64 and x86) and Unix-like systems (x64).
 
